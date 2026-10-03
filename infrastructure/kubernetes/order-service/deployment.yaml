@@ -1,0 +1,93 @@
+# ==============================================================================
+# Kubernetes Deployment: order-service
+# ==============================================================================
+# WHAT:
+#   Manages 2 replicated Pods running the Order Service container.
+#
+# WHY KUBESHOP NEEDS IT:
+#   Enables high availability, independent horizontal scaling, and demonstrates
+#   cross-service dependency failure behavior in Kubernetes.
+# ==============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: kubeshop
+  labels:
+    app: order-service
+    app.kubernetes.io/name: order-service
+    app.kubernetes.io/part-of: kubeshop-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: order-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+        - name: order-service
+          image: kubeshop/order-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8002
+          env:
+            - name: APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: kubeshop-config
+                  key: APP_ENV
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: kubeshop-config
+                  key: LOG_LEVEL
+            - name: PORT
+              value: "8002"
+            - name: PRODUCT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: kubeshop-config
+                  key: PRODUCT_SERVICE_URL
+            - name: ORDER_TO_PRODUCT_TIMEOUT_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: kubeshop-config
+                  key: ORDER_TO_PRODUCT_TIMEOUT_SECONDS
+            - name: ORDER_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kubeshop-secrets
+                  key: ORDER_DATABASE_URL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8002
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3

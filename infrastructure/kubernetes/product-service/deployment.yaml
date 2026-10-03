@@ -1,0 +1,95 @@
+# ==============================================================================
+# Kubernetes Deployment: product-service
+# ==============================================================================
+# WHAT:
+#   Manages the declarative desired state (2 replicas) of Product Service Pods.
+#
+# WHY KUBESHOP NEEDS IT:
+#   Provides automated rolling updates, replica management, self-healing pod
+#   restarts upon crash, and horizontal scaling.
+#
+# RELATIONSHIP:
+#   Deployment (product-service)
+#       ↓
+#   ReplicaSet (product-service-xxxx)
+#       ↓
+#   Pods (2 instances) -> Containers (kubeshop/product-service:latest)
+# ==============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-service
+  namespace: kubeshop
+  labels:
+    app: product-service
+    app.kubernetes.io/name: product-service
+    app.kubernetes.io/part-of: kubeshop-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: product-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: product-service
+    spec:
+      containers:
+        - name: product-service
+          image: kubeshop/product-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8001
+          env:
+            - name: APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: kubeshop-config
+                  key: APP_ENV
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: kubeshop-config
+                  key: LOG_LEVEL
+            - name: PORT
+              value: "8001"
+            - name: SIMULATED_LATENCY_MS
+              valueFrom:
+                configMapKeyRef:
+                  name: kubeshop-config
+                  key: SIMULATED_LATENCY_MS
+            - name: PRODUCT_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kubeshop-secrets
+                  key: PRODUCT_DATABASE_URL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8001
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3

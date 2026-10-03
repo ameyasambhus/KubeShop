@@ -1,0 +1,129 @@
+# ==============================================================================
+# KubeShop Docker Compose Environment
+# ==============================================================================
+# Usage:
+#   docker compose -f infrastructure/docker/docker-compose.yml up --build
+# ==============================================================================
+
+version: '3.8'
+
+networks:
+  kubeshop-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+
+services:
+  # ----------------------------------------------------------------------------
+  # PostgreSQL Database (Multi-Tenant Logical DBs)
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: kubeshop-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kubeshop-net
+
+  # ----------------------------------------------------------------------------
+  # Product Service
+  # ----------------------------------------------------------------------------
+  product-service:
+    build:
+      context: ../../services/product-service
+      dockerfile: Dockerfile
+    container_name: kubeshop-product-service
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      APP_ENV: development
+      LOG_LEVEL: INFO
+      PORT: 8001
+      PRODUCT_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/kubeshop_product
+      SIMULATED_LATENCY_MS: 0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - kubeshop-net
+
+  # ----------------------------------------------------------------------------
+  # Order Service
+  # ----------------------------------------------------------------------------
+  order-service:
+    build:
+      context: ../../services/order-service
+      dockerfile: Dockerfile
+    container_name: kubeshop-order-service
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      APP_ENV: development
+      LOG_LEVEL: INFO
+      PORT: 8002
+      ORDER_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/kubeshop_order
+      PRODUCT_SERVICE_URL: http://product-service:8001
+      ORDER_TO_PRODUCT_TIMEOUT_SECONDS: 2.5
+    depends_on:
+      postgres:
+        condition: service_healthy
+      product-service:
+        condition: service_started
+    networks:
+      - kubeshop-net
+
+  # ----------------------------------------------------------------------------
+  # API Gateway
+  # ----------------------------------------------------------------------------
+  api-gateway:
+    build:
+      context: ../../services/api-gateway
+      dockerfile: Dockerfile
+    container_name: kubeshop-api-gateway
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: development
+      LOG_LEVEL: INFO
+      PORT: 8000
+      PRODUCT_SERVICE_URL: http://product-service:8001
+      ORDER_SERVICE_URL: http://order-service:8002
+      GATEWAY_REQUEST_TIMEOUT_SECONDS: 5.0
+    depends_on:
+      - product-service
+      - order-service
+    networks:
+      - kubeshop-net
+
+  # ----------------------------------------------------------------------------
+  # Frontend Web Application (React + Nginx)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    container_name: kubeshop-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+    networks:
+      - kubeshop-net

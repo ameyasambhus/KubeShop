@@ -1,0 +1,22 @@
+# ==============================================================================
+# Kubernetes Namespace: kubeshop
+# ==============================================================================
+# WHAT:
+#   A logical cluster partition that groups all KubeShop resources together.
+#
+# WHY KUBESHOP NEEDS IT:
+#   Isolates KubeShop workloads, services, secrets, and configurations from the
+#   default cluster namespace and other workloads running on the same cluster.
+#
+# WHAT WOULD HAPPEN WITHOUT IT:
+#   All resources would be scheduled into the "default" namespace, cluttering
+#   cluster management, complicating deletion, and risking naming collisions.
+# ==============================================================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubeshop
+  labels:
+    app.kubernetes.io/name: kubeshop
+    app.kubernetes.io/part-of: kubeshop-platform

@@ -1,0 +1,36 @@
+# ==============================================================================
+# Kubernetes PersistentVolumeClaim: postgres-pvc
+# ==============================================================================
+# WHAT:
+#   A request for persistent storage volume in Kubernetes that decouples data
+#   lifecycles from Pod lifecycles.
+#
+# WHY KUBESHOP NEEDS IT:
+#   PostgreSQL must retain customer orders and catalog records even if the
+#   Postgres Pod crashes, is rescheduled, or undergoes a node restart.
+#
+# WHAT WOULD HAPPEN WITHOUT IT:
+#   Without a PVC, data stored inside the Postgres container's writable layer
+#   would be completely erased whenever the Pod restarts or is deleted!
+#
+# PRODUCTION NOTE FOR LEARNERS:
+#   For educational local clusters (Minikube / KinD), standard ReadWriteOnce
+#   storage provisioned by hostpath/local-path provisioners is sufficient.
+#   In production enterprise clouds, managed services (AWS RDS, GCP Cloud SQL)
+#   or StatefulSets with clustered replication (e.g. CloudNativePG) are used.
+# ==============================================================================
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: kubeshop
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: kubeshop-platform
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

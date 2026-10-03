@@ -1,0 +1,30 @@
+# ==============================================================================
+# Kubernetes Service: api-gateway
+# ==============================================================================
+# WHAT:
+#   Exposes API Gateway Pods internally at http://api-gateway:8000.
+#   Also exposes a NodePort (30080) for direct host-level testing in Minikube/KinD.
+#
+# WHY KUBESHOP NEEDS IT:
+#   The Frontend Nginx container and external Ingress controllers target
+#   http://api-gateway:8000/api to route browser requests to the gateway layer.
+# ==============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: kubeshop
+  labels:
+    app: api-gateway
+    app.kubernetes.io/name: api-gateway
+    app.kubernetes.io/part-of: kubeshop-platform
+spec:
+  type: NodePort
+  selector:
+    app: api-gateway
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      nodePort: 30080

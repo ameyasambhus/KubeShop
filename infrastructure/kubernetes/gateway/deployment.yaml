@@ -1,0 +1,93 @@
+# ==============================================================================
+# Kubernetes Deployment: api-gateway
+# ==============================================================================
+# WHAT:
+#   Manages 2 replicated Pods running the API Gateway reverse-proxy container.
+#
+# WHY KUBESHOP NEEDS IT:
+#   Distributes frontend traffic across multiple gateway instances, ensuring
+#   high availability and transparent downstream routing.
+# ==============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: kubeshop
+  labels:
+    app: api-gateway
+    app.kubernetes.io/name: api-gateway
+    app.kubernetes.io/part-of: kubeshop-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: kubeshop/api-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: kubeshop-config
+                  key: APP_ENV
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: kubeshop-config
+                  key: LOG_LEVEL
+            - name: PORT
+              value: "8000"
+            - name: PRODUCT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: kubeshop-config
+                  key: PRODUCT_SERVICE_URL
+            - name: ORDER_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: kubeshop-config
+                  key: ORDER_SERVICE_URL
+            - name: GATEWAY_REQUEST_TIMEOUT_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: kubeshop-config
+                  key: GATEWAY_REQUEST_TIMEOUT_SECONDS
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3

@@ -1,0 +1,34 @@
+# ==============================================================================
+# Kubernetes Service: postgres-service
+# ==============================================================================
+# WHAT:
+#   A ClusterIP Service providing a stable internal DNS name (postgres-service)
+#   and virtual IP for the Postgres Pod.
+#
+# WHY KUBESHOP NEEDS IT:
+#   Pods have transient, dynamically assigned IP addresses that change whenever
+#   a Pod restarts. The Service gives dependent microservices (Product & Order)
+#   a persistent hostname: postgres-service:5432.
+#
+# WHAT WOULD HAPPEN WITHOUT IT:
+#   Every time Postgres restarted, its IP address would change and microservices
+#   would immediately lose connection and crash.
+# ==============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: kubeshop
+  labels:
+    app: postgres
+    app.kubernetes.io/name: postgres-service
+    app.kubernetes.io/part-of: kubeshop-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432

@@ -1,0 +1,21 @@
+# ==============================================================================
+# ConfigMap: postgres-init-script
+# ==============================================================================
+# Mounts the SQL initialization script into PostgreSQL container's
+# /docker-entrypoint-initdb.d directory to create separate product and order databases.
+# ==============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-script
+  namespace: kubeshop
+  labels:
+    app.kubernetes.io/name: postgres-init
+    app.kubernetes.io/part-of: kubeshop-platform
+data:
+  init-db.sql: |
+    CREATE DATABASE kubeshop_product;
+    CREATE DATABASE kubeshop_order;
+    GRANT ALL PRIVILEGES ON DATABASE kubeshop_product TO postgres;
+    GRANT ALL PRIVILEGES ON DATABASE kubeshop_order TO postgres;

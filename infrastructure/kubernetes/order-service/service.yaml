@@ -1,0 +1,29 @@
+# ==============================================================================
+# Kubernetes Service: order-service
+# ==============================================================================
+# WHAT:
+#   A ClusterIP Service exposing Order Service Pods internally at:
+#   http://order-service:8000
+#
+# WHY KUBESHOP NEEDS IT:
+#   Allows the API Gateway to route /api/orders traffic to healthy Order Service
+#   replicas using a single stable internal domain name.
+# ==============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: kubeshop
+  labels:
+    app: order-service
+    app.kubernetes.io/name: order-service
+    app.kubernetes.io/part-of: kubeshop-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: order-service
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8002

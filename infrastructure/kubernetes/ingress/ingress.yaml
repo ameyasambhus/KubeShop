@@ -1,0 +1,47 @@
+# ==============================================================================
+# Kubernetes Ingress: kubeshop-ingress
+# ==============================================================================
+# WHAT:
+#   An L7 (HTTP/HTTPS) reverse-proxy route controller managing external ingress traffic.
+#
+# WHY KUBESHOP NEEDS IT:
+#   Allows mapping a single friendly hostname (kubeshop.local) or IP address to
+#   multiple distinct backend services based on URL path:
+#     - /    -> Routes to frontend (React SPA)
+#     - /api -> Routes directly to api-gateway
+#
+# USAGE IN LOCAL MINIKUBE:
+#   minikube addons enable ingress
+#   Add '127.0.0.1 kubeshop.local' to /etc/hosts
+# ==============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kubeshop-ingress
+  namespace: kubeshop
+  labels:
+    app.kubernetes.io/name: kubeshop-ingress
+    app.kubernetes.io/part-of: kubeshop-platform
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: kubeshop.local
+      http:
+        paths:
+          - path: /api/?(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8000
+          - path: /(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 3000

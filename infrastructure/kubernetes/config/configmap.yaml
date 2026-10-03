@@ -1,0 +1,41 @@
+# ==============================================================================
+# Kubernetes ConfigMap: kubeshop-config
+# ==============================================================================
+# WHAT:
+#   Stores non-confidential key-value configuration pairs decoupled from container images.
+#
+# WHY KUBESHOP NEEDS IT:
+#   Allows dynamically changing service discovery URLs (e.g. pointing Order Service
+#   to Product Service via internal Kubernetes DNS: http://product-service:8000),
+#   timeout policies, and logging levels without rebuilding container images.
+#
+# WHAT WOULD HAPPEN WITHOUT IT:
+#   Environment variables would either need to be hardcoded inside Dockerfiles
+#   (forcing image rebuilds on configuration changes) or duplicated across every Deployment.
+# ==============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubeshop-config
+  namespace: kubeshop
+  labels:
+    app.kubernetes.io/name: kubeshop-config
+    app.kubernetes.io/part-of: kubeshop-platform
+data:
+  # Global Environment
+  APP_ENV: "development"
+  LOG_LEVEL: "INFO"
+
+  # Downstream Microservice Discovery (Kubernetes Service DNS names)
+  # Format: http://<service-name>.<namespace>.svc.cluster.local:<port>
+  # Short form (within same namespace): http://<service-name>:<port>
+  PRODUCT_SERVICE_URL: "http://product-service:8000"
+  ORDER_SERVICE_URL: "http://order-service:8000"
+
+  # Timeouts & Circuit Breaker thresholds
+  ORDER_TO_PRODUCT_TIMEOUT_SECONDS: "2.5"
+  GATEWAY_REQUEST_TIMEOUT_SECONDS: "5.0"
+
+  # Fault Simulation (0 = disabled; set to 3000 to test downstream timeout)
+  SIMULATED_LATENCY_MS: "0"
